@@ -4,63 +4,40 @@ struct TodosView: View {
     @EnvironmentObject var api: BarryAPI
     @State private var todos: [Todo] = []
     @State private var isLoading = true
-    @State private var showAdd = false
-    @State private var newTodoTitle = ""
-    @State private var newTodoPriority = 2
 
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "0a0a0f").ignoresSafeArea()
+                Color(.systemGray6).ignoresSafeArea()
 
                 if isLoading {
-                    ProgressView().tint(Color(hex: "7c6aff"))
+                    ProgressView()
                 } else if todos.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 60))
-                            .foregroundStyle(LinearGradient(
-                                colors: [Color(hex: "7c6aff"), Color(hex: "a78bfa")],
-                                startPoint: .top, endPoint: .bottom))
-                        Text("All caught up!")
-                            .font(.title2).bold()
-                        Text("No pending todos.")
-                            .foregroundColor(.secondary)
+                    VStack(spacing: 14) {
+                        Text("✅").font(.system(size: 54))
+                        Text("All caught up!").font(.title2).bold()
+                        Text("No pending tasks.").foregroundColor(.secondary)
                     }
                 } else {
                     List {
                         ForEach(todos) { todo in
-                            TodoRow(todo: todo, onComplete: {
-                                completeTodo(todo)
-                            })
-                            .listRowBackground(Color(hex: "111118"))
-                            .listRowSeparatorTint(Color.white.opacity(0.07))
+                            TodoRow(todo: todo) { completeTodo(todo) }
+                                .listRowBackground(Color.white)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         }
                     }
-                    .listStyle(.plain)
+                    .listStyle(.insetGrouped)
                     .scrollContentBackground(.hidden)
                 }
             }
-            .navigationTitle("Todos")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Tasks")
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showAdd = true }) {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundStyle(LinearGradient(
-                                colors: [Color(hex: "7c6aff"), Color(hex: "a78bfa")],
-                                startPoint: .topLeading, endPoint: .bottomTrailing))
-                    }
-                }
-                ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: load) {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundColor(.secondary)
+                        Image(systemName: "arrow.clockwise").foregroundColor(.black)
                     }
                 }
-            }
-            .sheet(isPresented: $showAdd) {
-                AddTodoSheet(isPresented: $showAdd, onAdd: addTodo)
             }
         }
         .onAppear(perform: load)
@@ -70,99 +47,73 @@ struct TodosView: View {
         isLoading = true
         Task {
             let result = (try? await api.fetchTodos()) ?? []
-            await MainActor.run {
-                todos = result
-                isLoading = false
-            }
+            await MainActor.run { todos = result; isLoading = false }
         }
     }
 
     private func completeTodo(_ todo: Todo) {
         Task {
             try? await api.completeTodo(id: todo.id)
-            await MainActor.run {
-                todos.removeAll { $0.id == todo.id }
-            }
-        }
-    }
-
-    private func addTodo(title: String, priority: Int) {
-        Task {
-            try? await api.addTodo(title: title, priority: priority)
-            load()
+            await MainActor.run { todos.removeAll { $0.id == todo.id } }
         }
     }
 }
 
-// MARK: - Todo Row
 struct TodoRow: View {
     let todo: Todo
     let onComplete: () -> Void
-    @State private var pressed = false
+    @State private var checked = false
 
     var priorityColor: Color {
         switch todo.priority {
         case 1: return .red
         case 2: return .orange
-        case 3: return .yellow
-        default: return .gray
+        case 3: return Color(hex: "FFD600")
+        default: return Color(.systemGray4)
         }
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Button(action: {
-                withAnimation(.spring(response: 0.3)) { pressed = true }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { onComplete() }
-            }) {
+        HStack(spacing: 12) {
+            Button {
+                withAnimation(.spring(response: 0.3)) { checked = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { onComplete() }
+            } label: {
                 ZStack {
                     Circle()
-                        .stroke(priorityColor.opacity(0.6), lineWidth: 1.5)
-                        .frame(width: 22, height: 22)
-                    if pressed {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(priorityColor)
+                        .stroke(priorityColor, lineWidth: 1.5)
+                        .frame(width: 24, height: 24)
+                    if checked {
+                        Circle().fill(priorityColor).frame(width: 14, height: 14)
                     }
                 }
             }
-            .padding(.top, 1)
 
-            VStack(alignment: .leading, spacing: 4) {
+            Text(todo.emoji).font(.system(size: 16))
+
+            VStack(alignment: .leading, spacing: 2) {
                 Text(todo.title)
-                    .font(.system(size: 15, weight: .medium))
-                    .strikethrough(pressed)
-
+                    .font(.system(size: 15))
+                    .strikethrough(checked)
+                    .foregroundColor(checked ? .secondary : .black)
                 if let reason = todo.aiReason {
                     Text(reason)
-                        .font(.caption)
-                        .foregroundColor(Color(hex: "a78bfa"))
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
                         .italic()
                 }
-
-                if let due = todo.dueDate {
-                    Label(String(due.prefix(10)), systemImage: "calendar")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
             }
-
             Spacer()
-
-            Text(todo.priorityEmoji)
-                .font(.system(size: 14))
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 4)
-        .opacity(pressed ? 0.4 : 1)
+        .padding(.vertical, 12)
+        .opacity(checked ? 0.4 : 1)
+        .animation(.easeInOut(duration: 0.2), value: checked)
     }
 }
 
-// MARK: - Add Todo Sheet
 struct AddTodoSheet: View {
     @Binding var isPresented: Bool
     let onAdd: (String, Int) -> Void
-
     @State private var title = ""
     @State private var priority = 2
     @FocusState private var focused: Bool
@@ -183,17 +134,14 @@ struct AddTodoSheet: View {
                             Text(p.1).tag(p.0)
                         }
                     }
-                    .pickerStyle(.segmented)
+                    .pickerStyle(.inline)
+                    .labelsHidden()
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(Color(hex: "0a0a0f"))
-            .navigationTitle("New Todo")
+            .navigationTitle("New Task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { isPresented = false }
-                }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { isPresented = false } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
                         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }

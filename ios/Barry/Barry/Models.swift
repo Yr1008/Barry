@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - Chat
 struct ChatMessage: Identifiable {
@@ -25,27 +26,39 @@ struct Todo: Identifiable, Codable {
         case aiReason = "ai_reason"
     }
 
-    var priorityColor: String {
-        switch priority {
-        case 1: return "red"
-        case 2: return "orange"
-        case 3: return "yellow"
-        default: return "gray"
-        }
-    }
-
-    var priorityEmoji: String {
-        switch priority {
-        case 1: return "🔴"
-        case 2: return "🟠"
-        case 3: return "🟡"
-        default: return "⚪"
-        }
+    var emoji: String {
+        let emojis = ["🌟", "📌", "🎯", "⚡", "🔑", "📋", "🚀", "💡", "🌿", "🎨"]
+        return emojis[abs(id) % emojis.count]
     }
 }
 
 struct TodosResponse: Codable {
     let todos: [Todo]
+}
+
+// MARK: - Calendar Event
+struct CalendarEvent: Identifiable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
+    let emoji: String
+    let startHour: Double   // e.g. 6.0 = 06:00, 6.5 = 06:30
+    let endHour: Double
+    let color: Color
+
+    var startTimeString: String {
+        let h = Int(startHour)
+        let m = Int((startHour - Double(h)) * 60)
+        return String(format: "%02d:%02d", h, m)
+    }
+
+    var endTimeString: String {
+        let h = Int(endHour)
+        let m = Int((endHour - Double(h)) * 60)
+        return String(format: "%02d:%02d", h, m)
+    }
+
+    var timeRangeString: String { "\(startTimeString)-\(endTimeString)" }
 }
 
 // MARK: - Status
