@@ -1,0 +1,90 @@
+{
+  "shortcuts": [
+    {
+      "name": "Tell Barry",
+      "description": "Ask Barry anything via voice (Siri)",
+      "trigger": "Siri voice command",
+      "steps": [
+        "Ask for Input: 'What do you want to tell Barry?'",
+        "Set variable: question = Provided Input",
+        "Get Contents of URL:",
+        "  URL: http://YOUR_MAC_IP:8000/chat",
+        "  Method: POST",
+        "  Headers: Content-Type = application/json",
+        "  Body: {\"message\": [question], \"stream\": false}",
+        "Get Value for Key: response",
+        "Speak Text: [response]"
+      ]
+    },
+    {
+      "name": "Barry Morning Brief",
+      "description": "Get morning briefing on iPhone",
+      "trigger": "Every morning at 7:30 AM",
+      "steps": [
+        "Get Contents of URL: http://YOUR_MAC_IP:8000/briefing",
+        "Get Value for Key: briefing",
+        "Show Notification: Barry, [briefing (first 200 chars)]"
+      ]
+    },
+    {
+      "name": "Barry: Send Reminders",
+      "description": "Push Apple Reminders to Barry every hour",
+      "trigger": "Every 1 hour",
+      "steps": [
+        "Find Reminders: where Completed is false",
+        "Repeat with each reminder:",
+        "  Make Dictionary: type=reminder, title=[Name], due_date=[Due Date], list=[List]",
+        "  Get Contents of URL: http://YOUR_MAC_IP:8001/iphone/shortcut",
+        "  Method: POST, Headers: X-Barry-Secret = YOUR_SECRET",
+        "  Body: [Dictionary]"
+      ]
+    },
+    {
+      "name": "Barry: Send Battery & Status",
+      "description": "Send iPhone status to Barry",
+      "trigger": "Every morning at 7 AM",
+      "steps": [
+        "Get Battery Level",
+        "Get Current Focus",
+        "Make Dictionary: type=status, battery_level=[Battery Level], focus=[Focus]",
+        "Get Contents of URL: http://YOUR_MAC_IP:8001/iphone/shortcut",
+        "Method: POST, Headers: X-Barry-Secret = YOUR_SECRET",
+        "Body: [Dictionary]"
+      ]
+    },
+    {
+      "name": "New Note → Barry",
+      "description": "Send new Apple Notes to Barry",
+      "trigger": "When Note is created",
+      "steps": [
+        "Get Details of Notes: Name, Body",
+        "Make Dictionary: type=note, title=[Name], body=[Body]",
+        "Get Contents of URL: http://YOUR_MAC_IP:8001/iphone/shortcut",
+        "Method: POST, Headers: X-Barry-Secret = YOUR_SECRET",
+        "Body: [Dictionary]"
+      ]
+    },
+    {
+      "name": "Barry Quick Todo",
+      "description": "Add a todo to Barry from iPhone",
+      "trigger": "Manual / Widget / Siri",
+      "steps": [
+        "Ask for Input: 'What task to add?'",
+        "Get Contents of URL: http://YOUR_MAC_IP:8000/todos",
+        "Method: POST, Headers: Content-Type = application/json",
+        "Body: {\"title\": [Provided Input]}",
+        "Show Notification: 'Added to Barry!'"
+      ]
+    }
+  ],
+  "siri_commands": [
+    "Hey Siri, Tell Barry [your message]",
+    "Hey Siri, Barry Morning Brief",
+    "Hey Siri, Barry Quick Todo"
+  ],
+  "mac_setup": {
+    "description": "On Mac, use the Shortcuts app (macOS 12+) or Automator",
+    "note": "Mac Shortcuts can run on schedule just like iPhone Shortcuts",
+    "calendar_sync": "iCloud Calendar auto-syncs if ICLOUD_EMAIL is configured in .env"
+  }
+}
